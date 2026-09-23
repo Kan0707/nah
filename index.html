@@ -22,7 +22,7 @@
             display: flex; flex-direction: column; align-items: center;
         }
         .container {
-            width: 100%; max-width: 650px;
+            width: 100%; max-width: 800px;
             background: var(--container-bg);
             padding: 35px; border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
@@ -52,24 +52,74 @@
         }
         button:hover { background-color: #4a7070; }
         
-        .post-card {
-            background: var(--primary-bg);
-            padding: 20px; border-radius: 10px; margin-bottom: 20px;
-            border-left: 4px solid var(--accent);
-        }
-        .post-author { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); margin-bottom: 10px; }
-        .post-content { line-height: 1.6; white-space: pre-wrap; font-size: 1.05rem;}
-        
         #status-msg { text-align: center; color: var(--accent); font-size: 0.9rem; margin-top: -10px; margin-bottom: 15px; display: none; }
         
-        /* Đảm bảo bảng tin hiển thị rõ ràng */
+        /* Chuyển đổi bảng tin thành dạng lưới (Grid) */
         #feed {
             margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #eee;
             width: 100%;
-            display: block;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
         }
+
+        /* Định dạng từng ô bài viết thu gọn */
+        .post-card {
+            background: var(--primary-bg);
+            padding: 15px; 
+            border-radius: 10px; 
+            border-top: 4px solid var(--accent);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            height: 160px; /* Chiều cao cố định cho các thẻ */
+            box-sizing: border-box;
+        }
+        
+        .post-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+
+        .post-author { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 10px; }
+        
+        /* Cắt ngắn chữ nếu quá 4 dòng */
+        .post-content-preview { 
+            line-height: 1.5; 
+            font-size: 0.95rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-main);
+        }
+
+        /* CSS cho cửa sổ đọc toàn văn (Modal) */
+        .modal {
+            display: none; position: fixed; z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background-color: var(--container-bg);
+            padding: 30px; border-radius: 12px;
+            width: 90%; max-width: 600px;
+            max-height: 80vh; overflow-y: auto;
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .close-btn {
+            position: absolute; top: 15px; right: 20px;
+            font-size: 1.8rem; cursor: pointer; color: #888;
+            line-height: 1;
+        }
+        .close-btn:hover { color: #333; }
+        .modal-text { white-space: pre-wrap; line-height: 1.6; font-size: 1.1rem; margin-top: 15px; color: var(--text-main); }
     </style>
 </head>
 <body>
@@ -89,13 +139,22 @@
         </div>
     </div>
 
+    <!-- Cửa sổ nổi (Modal) để hiển thị chi tiết bài viết -->
+    <div id="post-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <div id="modal-author" class="post-author"></div>
+            <div id="modal-text" class="modal-text"></div>
+        </div>
+    </div>
+
     <script>
         // === KẾT NỐI SUPABASE ===
         const SUPABASE_URL = 'https://gvdmvnxstexkbnufdsqc.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_JlWVrh90hWTlyYni7IbVDw_oFPpfPp5';
-        
-        // Đã sửa tên biến thành "db" để không bị xung đột với thư viện
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let allPosts = []; // Biến lưu trữ toàn bộ bài viết
 
         async function submitPost() {
             const contentBox = document.getElementById('post-content');
@@ -110,7 +169,6 @@
             statusMsg.innerText = 'Đang gửi tâm sự của bạn...';
             statusMsg.style.color = '#5c8a8a';
 
-            // Dùng "db" thay vì "supabase"
             const { error } = await db.from('posts').insert([
                 { content: content }
             ]);
@@ -132,36 +190,61 @@
 
         async function loadPosts() {
             const feed = document.getElementById('feed');
-            feed.innerHTML = "<p style='text-align:center; color:#6c757d;'>Đang tải các tâm sự...</p>";
+            feed.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color:#6c757d;'>Đang tải các tâm sự...</p>";
 
-            // Dùng "db" thay vì "supabase"
             const { data, error } = await db
                 .from('posts')
                 .select('*')
                 .order('created_at', { ascending: false });
 
             if (error) {
-                feed.innerHTML = "<p style='text-align:center; color:red;'>Không thể kết nối đến cơ sở dữ liệu.</p>";
+                feed.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color:red;'>Không thể kết nối đến cơ sở dữ liệu.</p>";
                 console.error(error);
                 return;
             }
 
             if (data.length === 0) {
-                feed.innerHTML = "<p style='text-align:center; color:#6c757d;'>Chưa có tâm sự nào. Hãy là người đầu tiên chia sẻ.</p>";
+                feed.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color:#6c757d;'>Chưa có tâm sự nào. Hãy là người đầu tiên chia sẻ.</p>";
                 return;
             }
 
+            allPosts = data; // Lưu dữ liệu vào biến toàn cục
             feed.innerHTML = ""; 
-            data.forEach(post => {
+            
+            data.forEach((post, index) => {
                 const date = new Date(post.created_at).toLocaleString('vi-VN');
+                // Thay thế ký tự đặc biệt để an toàn khi hiển thị xem trước
+                const safePreview = post.content.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                
                 const postHTML = `
-                    <div class="post-card">
-                        <div class="post-author">👤 Người qua đường • ${date}</div>
-                        <div class="post-content">${post.content}</div>
+                    <div class="post-card" onclick="openModal(${index}, '${date}')">
+                        <div class="post-author">👤 Người qua đường<br><span style="font-weight:normal; font-size:0.7rem;">${date}</span></div>
+                        <div class="post-content-preview">${safePreview}</div>
                     </div>
                 `;
                 feed.innerHTML += postHTML;
             });
+        }
+
+        // Mở cửa sổ đọc toàn văn
+        function openModal(index, date) {
+            const post = allPosts[index];
+            document.getElementById('modal-author').innerHTML = `👤 Người qua đường • ${date}`;
+            document.getElementById('modal-text').innerText = post.content;
+            document.getElementById('post-modal').style.display = 'flex';
+        }
+
+        // Đóng cửa sổ đọc toàn văn
+        function closeModal() {
+            document.getElementById('post-modal').style.display = 'none';
+        }
+
+        // Đóng cửa sổ khi click ra ngoài vùng xám
+        window.onclick = function(event) {
+            const modal = document.getElementById('post-modal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
         }
 
         window.onload = loadPosts;
