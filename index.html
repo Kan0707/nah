@@ -61,6 +61,15 @@
         .post-content { line-height: 1.6; white-space: pre-wrap; font-size: 1.05rem;}
         
         #status-msg { text-align: center; color: var(--accent); font-size: 0.9rem; margin-top: -10px; margin-bottom: 15px; display: none; }
+        
+        /* Đảm bảo bảng tin hiển thị rõ ràng */
+        #feed {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            width: 100%;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -75,7 +84,7 @@
             <p id="status-msg">Đang gửi...</p>
             
             <div id="feed">
-                <!-- Các bài viết sẽ hiện ở đây -->
+                <!-- Nội dung danh sách bài viết sẽ xuất hiện ở đây -->
             </div>
         </div>
     </div>
@@ -86,7 +95,6 @@
         const SUPABASE_KEY = 'sb_publishable_JlWVrh90hWTlyYni7IbVDw_oFPpfPp5';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Gửi bài viết mới
         async function submitPost() {
             const contentBox = document.getElementById('post-content');
             const statusMsg = document.getElementById('status-msg');
@@ -95,13 +103,11 @@
             const content = contentBox.value.trim();
             if (!content) return;
 
-            // Hiển thị trạng thái đang gửi
             submitBtn.disabled = true;
             statusMsg.style.display = 'block';
             statusMsg.innerText = 'Đang gửi tâm sự của bạn...';
             statusMsg.style.color = '#5c8a8a';
 
-            // Gửi dữ liệu lên Supabase (không cần thông tin user)
             const { error } = await supabase.from('posts').insert([
                 { content: content }
             ]);
@@ -111,21 +117,19 @@
             if (error) {
                 statusMsg.innerText = "Đã có lỗi xảy ra. Xin hãy thử lại sau.";
                 statusMsg.style.color = 'red';
+                console.error(error); // In lỗi ra Console để kiểm tra nếu có
             } else {
                 contentBox.value = ""; 
                 statusMsg.innerText = "Tâm sự của bạn đã được lưu lại an toàn.";
-                
-                // Ẩn thông báo sau 3 giây
                 setTimeout(() => { statusMsg.style.display = 'none'; }, 3000);
                 
-                loadPosts(); 
+                loadPosts(); // Gọi lại hàm tải bảng tin ngay sau khi đăng thành công
             }
         }
 
-        // Tải các bài viết hiển thị lên web
         async function loadPosts() {
             const feed = document.getElementById('feed');
-            feed.innerHTML = "<p style='text-align:center; color:#6c757d;'>Đang kết nối để lắng nghe...</p>";
+            feed.innerHTML = "<p style='text-align:center; color:#6c757d;'>Đang tải các tâm sự...</p>";
 
             const { data, error } = await supabase
                 .from('posts')
@@ -133,7 +137,8 @@
                 .order('created_at', { ascending: false });
 
             if (error) {
-                feed.innerHTML = "<p style='text-align:center; color:red;'>Không thể tải bảng tin lúc này.</p>";
+                feed.innerHTML = "<p style='text-align:center; color:red;'>Không thể kết nối đến cơ sở dữ liệu.</p>";
+                console.error(error);
                 return;
             }
 
@@ -142,7 +147,7 @@
                 return;
             }
 
-            feed.innerHTML = "";
+            feed.innerHTML = ""; // Xóa dòng chữ loading
             data.forEach(post => {
                 const date = new Date(post.created_at).toLocaleString('vi-VN');
                 const postHTML = `
@@ -155,8 +160,8 @@
             });
         }
 
-        // Tải bảng tin ngay khi mở trang web
-        loadPosts();
+        // Gọi hàm tải bảng tin khi trang web vừa mở lên
+        window.onload = loadPosts;
     </script>
 </body>
 </html>
