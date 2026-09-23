@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Góc Ẩn Danh - Trút bỏ rào cản</title>
+    <!-- Tải thư viện Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary-bg: #f4f6f8;
+            --container-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #6c757d;
+            --accent: #5c8a8a;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-main);
+            margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .container {
+            width: 100%; max-width: 650px;
+            background: var(--container-bg);
+            padding: 35px; border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 1.6rem; text-align: center; margin-bottom: 5px; color: var(--accent); }
+        p.subtitle { text-align: center; color: var(--text-muted); font-size: 0.95rem; margin-bottom: 30px; line-height: 1.5; }
+        
+        textarea, button {
+            width: 100%; box-sizing: border-box;
+            margin-bottom: 20px; padding: 15px;
+            border: 1px solid #ddd; border-radius: 8px;
+            font-size: 1rem;
+        }
+        textarea { 
+            resize: vertical; 
+            min-height: 120px; 
+            font-family: inherit;
+            background-color: #fafafa;
+        }
+        textarea:focus { outline: none; border-color: var(--accent); }
+        
+        button {
+            background-color: var(--accent); color: white;
+            border: none; cursor: pointer; font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #4a7070; }
+        
+        .post-card {
+            background: var(--primary-bg);
+            padding: 20px; border-radius: 10px; margin-bottom: 20px;
+            border-left: 4px solid var(--accent);
+        }
+        .post-author { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); margin-bottom: 10px; }
+        .post-content { line-height: 1.6; white-space: pre-wrap; font-size: 1.05rem;}
+        
+        #status-msg { text-align: center; color: var(--accent); font-size: 0.9rem; margin-top: -10px; margin-bottom: 15px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Góc Lắng Nghe</h1>
+        <p class="subtitle">Không ai biết bạn là ai. Không dán nhãn. Không phán xét.<br>Hãy để lại những mệt mỏi của bạn ở đây.</p>
+        
+        <div id="app-section">
+            <textarea id="post-content" placeholder="Bạn đang mang tâm sự gì? Hãy viết ra đây..."></textarea>
+            <button id="submit-btn" onclick="submitPost()">Gửi Tâm Sự Ẩn Danh</button>
+            <p id="status-msg">Đang gửi...</p>
+            
+            <div id="feed">
+                <!-- Các bài viết sẽ hiện ở đây -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === KẾT NỐI SUPABASE ===
+        const SUPABASE_URL = 'https://gvdmvnxstexkbnufdsqc.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_JlWVrh90hWTlyYni7IbVDw_oFPpfPp5';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Gửi bài viết mới
+        async function submitPost() {
+            const contentBox = document.getElementById('post-content');
+            const statusMsg = document.getElementById('status-msg');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            const content = contentBox.value.trim();
+            if (!content) return;
+
+            // Hiển thị trạng thái đang gửi
+            submitBtn.disabled = true;
+            statusMsg.style.display = 'block';
+            statusMsg.innerText = 'Đang gửi tâm sự của bạn...';
+            statusMsg.style.color = '#5c8a8a';
+
+            // Gửi dữ liệu lên Supabase (không cần thông tin user)
+            const { error } = await supabase.from('posts').insert([
+                { content: content }
+            ]);
+
+            submitBtn.disabled = false;
+
+            if (error) {
+                statusMsg.innerText = "Đã có lỗi xảy ra. Xin hãy thử lại sau.";
+                statusMsg.style.color = 'red';
+            } else {
+                contentBox.value = ""; 
+                statusMsg.innerText = "Tâm sự của bạn đã được lưu lại an toàn.";
+                
+                // Ẩn thông báo sau 3 giây
+                setTimeout(() => { statusMsg.style.display = 'none'; }, 3000);
+                
+                loadPosts(); 
+            }
+        }
+
+        // Tải các bài viết hiển thị lên web
+        async function loadPosts() {
+            const feed = document.getElementById('feed');
+            feed.innerHTML = "<p style='text-align:center; color:#6c757d;'>Đang kết nối để lắng nghe...</p>";
+
+            const { data, error } = await supabase
+                .from('posts')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                feed.innerHTML = "<p style='text-align:center; color:red;'>Không thể tải bảng tin lúc này.</p>";
+                return;
+            }
+
+            if (data.length === 0) {
+                feed.innerHTML = "<p style='text-align:center; color:#6c757d;'>Chưa có tâm sự nào. Hãy là người đầu tiên chia sẻ.</p>";
+                return;
+            }
+
+            feed.innerHTML = "";
+            data.forEach(post => {
+                const date = new Date(post.created_at).toLocaleString('vi-VN');
+                const postHTML = `
+                    <div class="post-card">
+                        <div class="post-author">👤 Người qua đường • ${date}</div>
+                        <div class="post-content">${post.content}</div>
+                    </div>
+                `;
+                feed.innerHTML += postHTML;
+            });
+        }
+
+        // Tải bảng tin ngay khi mở trang web
+        loadPosts();
+    </script>
+</body>
+</html>
