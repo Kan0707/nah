@@ -93,79 +93,6 @@
         // === KẾT NỐI SUPABASE ===
         const SUPABASE_URL = 'https://gvdmvnxstexkbnufdsqc.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_JlWVrh90hWTlyYni7IbVDw_oFPpfPp5';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        async function submitPost() {
-            const contentBox = document.getElementById('post-content');
-            const statusMsg = document.getElementById('status-msg');
-            const submitBtn = document.getElementById('submit-btn');
-            
-            const content = contentBox.value.trim();
-            if (!content) return;
-
-            submitBtn.disabled = true;
-            statusMsg.style.display = 'block';
-            statusMsg.innerText = 'Đang gửi tâm sự của bạn...';
-            statusMsg.style.color = '#5c8a8a';
-
-            const { error } = await supabase.from('posts').insert([
-                { content: content }
-            ]);
-
-            submitBtn.disabled = false;
-
-            if (error) {
-                statusMsg.innerText = "Đã có lỗi xảy ra. Xin hãy thử lại sau.";
-                statusMsg.style.color = 'red';
-                console.error(error); // In lỗi ra Console để kiểm tra nếu có
-            } else {
-                contentBox.value = ""; 
-                statusMsg.innerText = "Tâm sự của bạn đã được lưu lại an toàn.";
-                setTimeout(() => { statusMsg.style.display = 'none'; }, 3000);
-                
-                loadPosts(); // Gọi lại hàm tải bảng tin ngay sau khi đăng thành công
-            }
-        }
-
-        async function loadPosts() {
-            const feed = document.getElementById('feed');
-            feed.innerHTML = "<p style='text-align:center; color:#6c757d;'>Đang tải các tâm sự...</p>";
-
-            const { data, error } = await supabase
-                .from('posts')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                feed.innerHTML = "<p style='text-align:center; color:red;'>Không thể kết nối đến cơ sở dữ liệu.</p>";
-                console.error(error);
-                return;
-            }
-
-            if (data.length === 0) {
-                feed.innerHTML = "<p style='text-align:center; color:#6c757d;'>Chưa có tâm sự nào. Hãy là người đầu tiên chia sẻ.</p>";
-                return;
-            }
-
-            feed.innerHTML = ""; // Xóa dòng chữ loading
-            data.forEach(post => {
-                const date = new Date(post.created_at).toLocaleString('vi-VN');
-                const postHTML = `
-                    <div class="post-card">
-                        <div class="post-author">👤 Người qua đường • ${date}</div>
-                        <div class="post-content">${post.content}</div>
-                    </div>
-                `;
-                feed.innerHTML += postHTML;
-            });
-        }
-
-        // Gọi hàm tải bảng tin khi trang web vừa mở lên
-        window.onload = loadPosts;
-   <script>
-        // === KẾT NỐI SUPABASE ===
-        const SUPABASE_URL = 'https://gvdmvnxstexkbnufdsqc.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_JlWVrh90hWTlyYni7IbVDw_oFPpfPp5';
         
         // Đã sửa tên biến thành "db" để không bị xung đột với thư viện
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -239,3 +166,5 @@
 
         window.onload = loadPosts;
     </script>
+</body>
+</html>
